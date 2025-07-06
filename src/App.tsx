@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { Store } from "@tauri-apps/plugin-store";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Copy, Plus, X, Edit2, Check, Settings } from "lucide-react";
 import "./App.css";
 
@@ -48,6 +49,7 @@ function App() {
   const [editContent, setEditContent] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Initialize store and load prompts on mount
   useEffect(() => {
@@ -131,10 +133,27 @@ function App() {
     setShowSettings(false);
   };
 
+  const handleMouseDown = async (e: React.MouseEvent) => {
+    if (e.button === 0) { // Left click
+      setIsDragging(true);
+      const currentWindow = getCurrentWindow();
+      await currentWindow.startDragging();
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   return (
     <div className="app">
-      <div className="header" data-tauri-drag-region>
-        <h1>Prompt Picker</h1>
+      <div 
+        className={`header ${isDragging ? 'dragging' : ''}`}
+        data-tauri-drag-region
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+      >
+        <h1 data-tauri-drag-region>Prompt Picker</h1>
         <button 
           className="settings-btn"
           onClick={() => setShowSettings(!showSettings)}
