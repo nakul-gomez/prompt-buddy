@@ -117,7 +117,6 @@ body {
   margin-bottom: 20px;
   padding-bottom: 15px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  cursor: grab;
   user-select: none;
   position: relative;
   backdrop-filter: blur(10px);
@@ -139,11 +138,7 @@ body {
   pointer-events: none;
 }
 
-.header:active,
-.header.dragging {
-  cursor: grabbing;
-  opacity: 0.8;
-}
+
 
 .header h1 {
   font-size: 20px;
@@ -152,7 +147,6 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  cursor: grab;
   pointer-events: none;
   position: relative;
   z-index: 2;

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { Store } from "@tauri-apps/plugin-store";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Copy, Plus, X, Edit2, Check, Settings, Minus, Square } from "lucide-react";
+import { Copy, Plus, X, Edit2, Check, Settings, Minus } from "lucide-react";
 import "./App.css";
 
 interface Prompt {
@@ -49,7 +49,6 @@ function App() {
   const [editContent, setEditContent] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
   // Initialize store and load prompts on mount
   useEffect(() => {
@@ -133,18 +132,6 @@ function App() {
     setShowSettings(false);
   };
 
-  const handleMouseDown = async (e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click
-      setIsDragging(true);
-      const currentWindow = getCurrentWindow();
-      await currentWindow.startDragging();
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
   const minimizeWindow = async () => {
     const currentWindow = getCurrentWindow();
     await currentWindow.minimize();
@@ -156,13 +143,8 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <div 
-        className={`header ${isDragging ? 'dragging' : ''}`}
-        data-tauri-drag-region
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-      >
+    <div className="app" data-tauri-drag-region>
+      <div className="header" data-tauri-drag-region>
         <h1 data-tauri-drag-region>Prompt Picker</h1>
         <div className="window-controls" data-tauri-drag-region="false">
           <button 
@@ -192,39 +174,42 @@ function App() {
       </div>
 
       {showSettings && (
-        <div className="settings-panel">
-          <button onClick={resetToDefaults} className="reset-btn">
+        <div className="settings-panel" data-tauri-drag-region>
+          <button onClick={resetToDefaults} className="reset-btn" data-tauri-drag-region="false">
             Reset to Defaults
           </button>
-          <p className="hint">Click a prompt to copy it to clipboard</p>
+          <p className="hint" data-tauri-drag-region>Click a prompt to copy it to clipboard</p>
         </div>
       )}
 
-      <div className="prompts-grid">
+      <div className="prompts-grid" data-tauri-drag-region>
         {prompts.map((prompt) => (
-          <div key={prompt.id} className="prompt-card">
+          <div key={prompt.id} className="prompt-card" data-tauri-drag-region>
             {editingId === prompt.id ? (
-              <div className="edit-mode">
+              <div className="edit-mode" data-tauri-drag-region>
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="edit-title"
                   placeholder="Title"
+                  data-tauri-drag-region="false"
                 />
                 <textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   className="edit-content"
                   placeholder="Content"
+                  data-tauri-drag-region="false"
                 />
-                <div className="edit-actions">
-                  <button onClick={saveEdit} className="save-btn">
+                <div className="edit-actions" data-tauri-drag-region>
+                  <button onClick={saveEdit} className="save-btn" data-tauri-drag-region="false">
                     <Check size={16} />
                   </button>
                   <button 
                     onClick={() => setEditingId(null)} 
                     className="cancel-btn"
+                    data-tauri-drag-region="false"
                   >
                     <X size={16} />
                   </button>
@@ -232,13 +217,14 @@ function App() {
               </div>
             ) : (
               <>
-                <div className={`prompt-gradient bg-gradient-to-br ${prompt.color}`} />
-                <h3>{prompt.title}</h3>
-                <p>{prompt.content}</p>
-                <div className="prompt-actions">
+                <div className={`prompt-gradient bg-gradient-to-br ${prompt.color}`} data-tauri-drag-region />
+                <h3 data-tauri-drag-region>{prompt.title}</h3>
+                <p data-tauri-drag-region>{prompt.content}</p>
+                <div className="prompt-actions" data-tauri-drag-region>
                   <button
                     onClick={() => copyToClipboard(prompt)}
                     className={`copy-btn ${copiedId === prompt.id ? 'copied' : ''}`}
+                    data-tauri-drag-region="false"
                   >
                     {copiedId === prompt.id ? (
                       <Check size={16} />
@@ -249,12 +235,14 @@ function App() {
                   <button
                     onClick={() => startEdit(prompt)}
                     className="edit-btn"
+                    data-tauri-drag-region="false"
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => deletePrompt(prompt.id)}
                     className="delete-btn"
+                    data-tauri-drag-region="false"
                   >
                     <X size={16} />
                   </button>
@@ -268,6 +256,7 @@ function App() {
           <button 
             className="add-prompt-btn"
             onClick={() => setIsAddingNew(true)}
+            data-tauri-drag-region="false"
           >
             <Plus size={24} />
             <span>Add Prompt</span>
@@ -275,13 +264,14 @@ function App() {
         )}
         
         {isAddingNew && (
-          <div className="add-prompt-confirm">
-            <button onClick={addNewPrompt} className="confirm-add">
+          <div className="add-prompt-confirm" data-tauri-drag-region>
+            <button onClick={addNewPrompt} className="confirm-add" data-tauri-drag-region="false">
               <Check size={20} />
             </button>
             <button 
               onClick={() => setIsAddingNew(false)} 
               className="cancel-add"
+              data-tauri-drag-region="false"
             >
               <X size={20} />
             </button>
