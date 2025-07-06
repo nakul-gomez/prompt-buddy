@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { Store } from "@tauri-apps/plugin-store";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Copy, Plus, X, Edit2, Check, Settings } from "lucide-react";
+import { Copy, Plus, X, Edit2, Check, Settings, Minus, Square } from "lucide-react";
 import "./App.css";
 
 interface Prompt {
@@ -145,6 +145,16 @@ function App() {
     setIsDragging(false);
   };
 
+  const minimizeWindow = async () => {
+    const currentWindow = getCurrentWindow();
+    await currentWindow.minimize();
+  };
+
+  const closeWindow = async () => {
+    const currentWindow = getCurrentWindow();
+    await currentWindow.close();
+  };
+
   return (
     <div className="app">
       <div 
@@ -154,12 +164,31 @@ function App() {
         onMouseUp={handleMouseUp}
       >
         <h1 data-tauri-drag-region>Prompt Picker</h1>
-        <button 
-          className="settings-btn"
-          onClick={() => setShowSettings(!showSettings)}
-        >
-          <Settings size={18} />
-        </button>
+        <div className="window-controls" data-tauri-drag-region="false">
+          <button 
+            className="settings-btn"
+            onClick={() => setShowSettings(!showSettings)}
+            data-tauri-drag-region="false"
+          >
+            <Settings size={18} />
+          </button>
+          <button 
+            className="window-btn minimize-btn"
+            onClick={minimizeWindow}
+            title="Minimize"
+            data-tauri-drag-region="false"
+          >
+            <Minus size={16} />
+          </button>
+          <button 
+            className="window-btn close-btn"
+            onClick={closeWindow}
+            title="Close"
+            data-tauri-drag-region="false"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       {showSettings && (

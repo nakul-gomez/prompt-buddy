@@ -15,13 +15,16 @@
         "title": "Prompt Picker",
         "width": 400,
         "height": 500,
-        "resizable": false,
+        "resizable": true,
         "alwaysOnTop": true,
         "decorations": false,
         "transparent": true,
         "skipTaskbar": false,
         "center": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "shadow": false,
+        "titleBarStyle": "Transparent",
+        "hiddenTitle": true
       }
     ],
     "security": {
