@@ -13,18 +13,27 @@
     "windows": [
       {
         "title": "Prompt Picker",
-        "width": 400,
-        "height": 500,
-        "resizable": true,
+        "width": 800,
+        "height": 80,
+        "resizable": false,
         "alwaysOnTop": true,
         "decorations": false,
         "transparent": true,
-        "skipTaskbar": false,
-        "center": true,
-        "dragDropEnabled": false,
+        "skipTaskbar": true,
+        "center": false,
+        "x": 200,
+        "y": 950,
+        "dragDropEnabled": true,
         "shadow": false,
         "titleBarStyle": "Transparent",
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "focus": false,
+        "acceptFirstMouse": false,
+        "visible": false,
+        "minimizable": false,
+        "maximizable": false,
+        "closable": true,
+        "visibleOnAllWorkspaces": true
       }
     ],
     "security": {
