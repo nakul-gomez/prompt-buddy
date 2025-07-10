@@ -1,6 +1,13 @@
-use tauri::{Manager, Emitter};
+use tauri::{AppHandle, Listener, Manager, Emitter};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use enigo::{Enigo, Keyboard, Settings};
+use tauri::{WebviewWindowBuilder, WebviewUrl, LogicalPosition};
+
+#[derive(Clone, serde::Serialize)]
+struct PromptPayload {
+  prompt: String,
+  index: usize,
+}
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -106,6 +113,63 @@ async fn inject_text(text: String) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn show_popup(app: AppHandle, x: f64, y: f64, prompt: String, index: usize) {
+    println!("🎯 Showing popup for index {}", index);
+
+    let payload = PromptPayload { prompt, index };
+
+    if let Some(window) = app.get_webview_window("popup") {
+        println!("Existing popup window found, showing and setting focus.");
+        let _ = window.set_position(tauri::Position::Logical(LogicalPosition { x, y }));
+        let _ = window.show();
+        let _ = window.set_focus();
+        if let Err(e) = window.emit("show_prompt", payload) {
+            println!("Error emitting show_prompt event: {}", e);
+        }
+    } else {
+        println!("No existing popup window, creating a new one.");
+        match WebviewWindowBuilder::new(
+            &app,
+            "popup",
+            WebviewUrl::App("popup.html".into()),
+        )
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .visible(false)
+        .position(x, y)
+        .inner_size(300.0, 150.0)
+        .build() {
+            Ok(window) => {
+                println!("New popup window created successfully, showing and setting focus.");
+                // We must listen for the webview to be created before we can emit to it
+                // Clone the window handle so we can move it into the closure without
+                // moving the original `window` out of scope.
+                let window_clone = window.clone();
+                let _ = window.once("tauri://created", move |_| {
+                    if let Err(e) = window_clone.emit("show_prompt", payload) {
+                        println!("Error emitting show_prompt event to new window: {}", e);
+                    }
+                });
+                let _ = window.show();
+                let _ = window.set_focus();
+            },
+            Err(e) => {
+                println!("Error creating popup window: {}", e);
+            }
+        }
+    }
+}
+
+#[tauri::command]
+async fn hide_popup(app: AppHandle) {
+    println!("🎯 Hiding popup");
+    if let Some(window) = app.get_webview_window("popup") {
+        let _ = window.hide();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -113,7 +177,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility])
+        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup])
         .setup(|app| {
             println!("🔧 Setting up global shortcuts with handlers...");
             

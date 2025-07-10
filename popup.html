@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Details</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .popup-container {
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .popup-background {
+      position: absolute;
+      inset: 0;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.5),
+        0 0 100px rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .popup-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .popup-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .popup-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.95);
+      flex: 1;
+    }
+
+    .popup-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 16px 16px 0 0;
+      opacity: 0.8;
+    }
+
+    .popup-text {
+      flex: 1;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .popup-text::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .popup-text::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+
+    .popup-text::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .popup-text::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .popup-shortcut {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: monospace;
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Gradient classes */
+    .from-purple-500.to-pink-500 {
+      background: linear-gradient(90deg, rgb(168, 85, 247), rgb(236, 72, 153));
+    }
+
+    .from-blue-500.to-cyan-500 {
+      background: linear-gradient(90deg, rgb(59, 130, 246), rgb(6, 182, 212));
+    }
+
+    .from-green-500.to-emerald-500 {
+      background: linear-gradient(90deg, rgb(34, 197, 94), rgb(16, 185, 129));
+    }
+
+    .from-orange-500.to-red-500 {
+      background: linear-gradient(90deg, rgb(249, 115, 22), rgb(239, 68, 68));
+    }
+
+    .from-indigo-500.to-purple-500 {
+      background: linear-gradient(90deg, rgb(99, 102, 241), rgb(168, 85, 247));
+    }
+
+    .from-teal-500.to-green-500 {
+      background: linear-gradient(90deg, rgb(20, 184, 166), rgb(34, 197, 94));
+    }
+  </style>
+</head>
+<body>
+  <div class="popup-container">
+    <div class="popup-background"></div>
+    <div class="popup-gradient" id="gradient"></div>
+    <div class="popup-content">
+      <div class="popup-header">
+        <div class="popup-number" id="number">1</div>
+        <div class="popup-title" id="title">Loading...</div>
+      </div>
+      <div class="popup-text" id="content">Loading prompt content...</div>
+      <div class="popup-shortcut" id="shortcut">⌘⌥1</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getCurrent } from '@tauri-apps/api/window';
+    import { listen } from '@tauri-apps/api/event';
+
+    const currentWindow = getCurrent();
+    
+    function updateContent(payload) {
+        console.log('popup.html: received show_prompt with payload', payload);
+        try {
+            const prompt = JSON.parse(payload.prompt);
+            const index = payload.index;
+            
+            document.getElementById('number').textContent = (index + 1).toString();
+            document.getElementById('title').textContent = prompt.title;
+            document.getElementById('content').textContent = prompt.content;
+            document.getElementById('shortcut').textContent = `⌘⌥${index + 1}`;
+            document.getElementById('gradient').className = `popup-gradient ${prompt.color}`;
+        } catch (e) {
+            console.error('Failed to parse prompt data:', e);
+        }
+    }
+
+    listen('show_prompt', (event) => {
+        updateContent(event.payload);
+    });
+    
+    // Listen for mouse movements to coordinate with the main window
+    document.documentElement.addEventListener('mouseenter', () => {
+      console.log('popup.html: emitting popup_mouse_enter');
+      currentWindow.emit('popup_mouse_enter');
+    });
+    
+    document.documentElement.addEventListener('mouseleave', () => {
+      console.log('popup.html: emitting popup_mouse_leave');
+      currentWindow.emit('popup_mouse_leave');
+    });
+  </script>
+</body>
+</html> 

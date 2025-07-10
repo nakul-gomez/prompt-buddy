@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { Settings, X } from "lucide-react";
 import "./App.css";
+import { PhysicalPosition } from "@tauri-apps/api/window";
 
 interface Prompt {
   id: string;
@@ -17,163 +19,240 @@ const DEFAULT_PROMPTS: Prompt[] = [
   {
     id: "1",
     title: "Debug Root Cause",
-    content: "Come up with 5-7 most likely root causes of this bug, and attempt the 1-2 most likely fixes with proper logging. Don't hold back, give it your all.",
-    color: "from-purple-500 to-pink-500"
+    content:
+      "Come up with 5-7 most likely root causes of this bug, and attempt the 1-2 most likely fixes with proper logging. Don't hold back, give it your all.",
+    color: "from-purple-500 to-pink-500",
   },
   {
     id: "2",
     title: "Explain Code",
-    content: "Explain this code in detail, including its purpose, how it works, potential edge cases, and any improvements that could be made.",
-    color: "from-blue-500 to-cyan-500"
+    content:
+      "Explain this code in detail, including its purpose, how it works, potential edge cases, and any improvements that could be made.",
+    color: "from-blue-500 to-cyan-500",
   },
   {
     id: "3",
     title: "Refactor",
-    content: "Refactor this code to be more readable, maintainable, and performant. Follow best practices and explain your changes.",
-    color: "from-green-500 to-emerald-500"
+    content:
+      "Refactor this code to be more readable, maintainable, and performant. Follow best practices and explain your changes.",
+    color: "from-green-500 to-emerald-500",
   },
   {
     id: "4",
     title: "Write Tests",
-    content: "Write comprehensive unit tests for this code, covering edge cases and error scenarios. Use appropriate testing patterns.",
-    color: "from-orange-500 to-red-500"
+    content:
+      "Write comprehensive unit tests for this code, covering edge cases and error scenarios. Use appropriate testing patterns.",
+    color: "from-orange-500 to-red-500",
   },
   {
     id: "5",
     title: "Optimize Performance",
-    content: "Analyze this code for performance bottlenecks and suggest specific optimizations with examples.",
-    color: "from-indigo-500 to-purple-500"
+    content:
+      "Analyze this code for performance bottlenecks and suggest specific optimizations with examples.",
+    color: "from-indigo-500 to-purple-500",
   },
   {
     id: "6",
     title: "Add Error Handling",
-    content: "Add comprehensive error handling to this code with proper logging and user-friendly error messages.",
-    color: "from-teal-500 to-green-500"
-  }
+    content:
+      "Add comprehensive error handling to this code with proper logging and user-friendly error messages.",
+    color: "from-teal-500 to-green-500",
+  },
 ];
-
-let store: Store | null = null;
 
 function App() {
   const [prompts, setPrompts] = useState<Prompt[]>(DEFAULT_PROMPTS);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [injectedId, setInjectedId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [showSettings, setShowSettings] = useState(false);
 
-  // Initialize store and load prompts on mount
-  useEffect(() => {
-    const initStore = async () => {
-      store = await Store.load("prompts.json");
-      const saved = await store.get<Prompt[]>("prompts");
-      if (saved) {
-        setPrompts(saved);
-      }
-    };
-    initStore();
+  /* --------------------------------------------------
+   * Load & persist prompts
+   * -------------------------------------------------- */
+  const loadPrompts = useCallback(async () => {
+    const store = await Store.load("prompts.json");
+    const saved = await store.get<Prompt[]>("prompts");
+    setPrompts(saved || DEFAULT_PROMPTS);
   }, []);
 
-  // Listen for keyboard shortcut events from backend
   useEffect(() => {
-    const unlistenPromise = listen<number>("inject-prompt", (event) => {
-      const promptIndex = event.payload;
-      console.log(`🎯 Frontend: Received inject-prompt event for index: ${promptIndex}`);
-      
-      if (promptIndex >= 0 && promptIndex < prompts.length) {
-        const prompt = prompts[promptIndex];
-        console.log(`🚀 Frontend: Injecting prompt ${promptIndex + 1}: ${prompt.title}`);
-        injectTextViaShortcut(prompt, promptIndex + 1);
-      } else {
-        console.warn(`⚠️  Frontend: Invalid prompt index: ${promptIndex}`);
-      }
-    });
+    loadPrompts();
+  }, [loadPrompts]);
 
+  /* --------------------------------------------------
+   * Global shortcut listener from the backend
+   * -------------------------------------------------- */
+  useEffect(() => {
+    const unlistenPromise = listen<number>(
+      "inject-prompt",
+      ({ payload: index }) => {
+        if (index >= 0 && index < prompts.length) {
+          injectTextViaShortcut(prompts[index], index + 1);
+        }
+      }
+    );
     return () => {
-      unlistenPromise.then(unlisten => unlisten());
+      unlistenPromise.then((unlisten) => unlisten());
     };
   }, [prompts]);
 
-  // Inject text via keyboard shortcut (no window focus issues)
-  const injectTextViaShortcut = async (prompt: Prompt, shortcutNumber: number) => {
-    console.log(`🚀 Frontend: Injecting via Cmd+Alt+${shortcutNumber}: ${prompt.title}`);
-    console.log(`📝 Frontend: Text to inject: ${prompt.content}`);
-    
-    // Clear any previous states
+  useEffect(() => {
+    const unlistenPromise = listen("prompts-updated", loadPrompts);
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [loadPrompts]);
+
+  /* --------------------------------------------------
+   * Hover handlers
+   * -------------------------------------------------- */
+  const handleMouseEnter = useCallback((index: number) => {
+    setExpandedIndex(index);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setExpandedIndex(null);
+  }, []);
+
+  /* --------------------------------------------------
+   * Inject text helper
+   * -------------------------------------------------- */
+  const injectTextViaShortcut = async (prompt: Prompt, shortcut: number) => {
     setInjectedId(null);
     setErrorMessage("");
-    
     try {
-      // Direct injection without any window manipulation
-      const result = await invoke<string>("inject_text", { text: prompt.content });
-      console.log("✅ Frontend: Injection successful:", result);
-      
-      // Show success feedback briefly
+      await invoke<string>("inject_text", { text: prompt.content });
       setInjectedId(prompt.id);
-      setTimeout(() => {
-        setInjectedId(null);
-      }, 2000);
-      
-    } catch (error) {
-      console.error("❌ Frontend: Injection failed:", error);
-      setErrorMessage(`Failed to inject prompt ${shortcutNumber}`);
-      
-      // Clear error after 3 seconds
-      setTimeout(() => {
-        setErrorMessage("");
-      }, 3000);
+      setTimeout(() => setInjectedId(null), 2000);
+    } catch (e) {
+      console.error(e);
+      setErrorMessage(`Failed to inject prompt ${shortcut}`);
+      setTimeout(() => setErrorMessage(""), 3000);
     }
   };
 
+  /* --------------------------------------------------
+   * Close window helper
+   * -------------------------------------------------- */
   const closeWindow = async () => {
-    const currentWindow = getCurrentWindow();
-    await currentWindow.close();
+    const win = getCurrentWindow();
+    await win.close();
   };
 
+  /* --------------------------------------------------
+   * Open Settings window
+   * -------------------------------------------------- */
+  const openSettingsWindow = async () => {
+    // If a settings window already exists, just focus it
+    const settingsWin = await WebviewWindow.getByLabel("settings");
+    if (settingsWin) {
+      await settingsWin.setFocus();
+      return;
+    }
+
+    // Otherwise create a new one
+    new WebviewWindow("settings", {
+      url: "index.html?settings",
+      width: 450,
+      height: 260,
+      resizable: false,
+      title: "Prompt Picker Settings",
+      decorations: true,
+    });
+  };
+
+  /* --------------------------------------------------
+   * Open Edit Window
+   * -------------------------------------------------- */
+  const openEditWindow = async (index: number, element: HTMLElement) => {
+    const label = `edit-${index}`;
+    const existing = await WebviewWindow.getByLabel(label);
+    if (existing) {
+      await existing.setFocus();
+      return;
+    }
+
+    const EDIT_WIDTH = 400;
+    const EDIT_HEIGHT = 300;
+
+    const win = getCurrentWindow();
+    const pos = await win.outerPosition();
+    const scale = await win.scaleFactor();
+
+    const rect = element.getBoundingClientRect();
+    const physicalLeft = pos.x + Math.round(rect.left * scale);
+    const physicalTop = pos.y + Math.round(rect.top * scale);
+    const physicalWidth = Math.round(rect.width * scale);
+
+    const newLeft = physicalLeft + (physicalWidth / 2) - Math.round((EDIT_WIDTH * scale) / 2);
+    const newTop = physicalTop - Math.round(EDIT_HEIGHT * scale) - 10;
+
+    const newWin = new WebviewWindow(label, {
+      url: `index.html?edit=${index}`,
+      title: `Edit Prompt ${index + 1}`,
+      width: EDIT_WIDTH,
+      height: EDIT_HEIGHT,
+      resizable: true,
+      decorations: true,
+    });
+
+    await newWin.once("tauri://created", async () => {
+      await newWin.setPosition(new PhysicalPosition(newLeft, newTop));
+    });
+  };
+
+  /* --------------------------------------------------
+   * Render
+   * -------------------------------------------------- */
   return (
     <div className="prompt-bar" data-tauri-drag-region>
-      {/* Liquid glass background */}
       <div className="bar-background" data-tauri-drag-region />
-      
-      {/* Main content */}
+
       <div className="bar-content" data-tauri-drag-region>
-        {/* Prompts display */}
         <div className="prompts-container" data-tauri-drag-region>
-          {prompts.slice(0, 9).map((prompt, index) => (
-            <div 
-              key={prompt.id} 
-              className={`prompt-pill ${injectedId === prompt.id ? 'injected' : ''}`}
+          {prompts.slice(0, 9).map((p, i) => (
+            <div
+              key={p.id}
+              className={`prompt-pill ${injectedId === p.id ? "injected" : ""} ${
+                expandedIndex === i ? "expanded" : ""
+              }`}
+              onMouseEnter={() => handleMouseEnter(i)}
+              onMouseLeave={handleMouseLeave}
+              onClick={() => injectTextViaShortcut(p, i + 1)}
+              onContextMenu={(e: React.MouseEvent) => {
+                e.preventDefault();
+                openEditWindow(i, e.currentTarget as HTMLElement);
+              }}
               data-tauri-drag-region
             >
-              {/* Number label */}
-              <div className="prompt-number" data-tauri-drag-region>
-                {index + 1}
-              </div>
-              
-              {/* Prompt content */}
-              <div className="prompt-info" data-tauri-drag-region>
-                <div className="prompt-title" data-tauri-drag-region>
-                  {prompt.title}
+              <div className="prompt-number">{i + 1}</div>
+
+              {expandedIndex === i ? (
+                <div className="prompt-full">{p.content}</div>
+              ) : (
+                <div className="prompt-info">
+                  <div className="prompt-title">{p.title}</div>
+                  <div className="prompt-shortcut">⌘⌥{i + 1}</div>
                 </div>
-                <div className="prompt-shortcut" data-tauri-drag-region>
-                  ⌘⌥{index + 1}
-                </div>
-              </div>
-              
-              {/* Color gradient */}
-              <div className={`prompt-gradient bg-gradient-to-r ${prompt.color}`} data-tauri-drag-region />
+              )}
+
+              <div
+                className={`prompt-gradient bg-gradient-to-r ${p.color}`}
+              />
             </div>
           ))}
         </div>
 
         {/* Controls */}
         <div className="bar-controls" data-tauri-drag-region="false">
-          <button 
+          <button
             className="control-btn"
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={openSettingsWindow}
             data-tauri-drag-region="false"
           >
             <Settings size={16} />
           </button>
-          <button 
+          <button
             className="control-btn close-btn"
             onClick={closeWindow}
             data-tauri-drag-region="false"
@@ -183,33 +262,10 @@ function App() {
         </div>
       </div>
 
-      {/* Error message */}
-      {errorMessage && (
-        <div className="error-toast" data-tauri-drag-region>
-          {errorMessage}
-        </div>
-      )}
+      {/* Error toast */}
+      {errorMessage && <div className="error-toast">{errorMessage}</div>}
 
-      {/* Settings overlay */}
-      {showSettings && (
-        <div className="settings-overlay" data-tauri-drag-region>
-          <div className="settings-content" data-tauri-drag-region>
-            <p className="settings-hint" data-tauri-drag-region>
-              Use Cmd+Alt+1-9 to inject prompts
-            </p>
-            <p className="settings-hint" data-tauri-drag-region>
-              Cmd+Shift+Enter to show/hide bar
-            </p>
-            <button 
-              onClick={() => setShowSettings(false)}
-              className="settings-close"
-              data-tauri-drag-region="false"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Settings overlay moved to dedicated window */}
     </div>
   );
 }
