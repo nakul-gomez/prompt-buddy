@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { Settings, X } from "lucide-react";
+import { Settings, X, Pencil } from "lucide-react";
 import "./App.css";
 import { PhysicalPosition } from "@tauri-apps/api/window";
 
@@ -65,19 +65,29 @@ function App() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [injectedId, setInjectedId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const pillRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   /* --------------------------------------------------
    * Load & persist prompts
    * -------------------------------------------------- */
   const loadPrompts = useCallback(async () => {
     const store = await Store.load("prompts.json");
-    const saved = await store.get<Prompt[]>("prompts");
-    setPrompts(saved || DEFAULT_PROMPTS);
+    let saved = await store.get<Prompt[]>("prompts");
+    if (!saved || saved.length === 0) {
+      saved = DEFAULT_PROMPTS;
+      await store.set("prompts", saved);
+      await store.save();
+    }
+    setPrompts(saved);
   }, []);
 
   useEffect(() => {
     loadPrompts();
   }, [loadPrompts]);
+
+  useEffect(() => {
+    pillRefs.current = pillRefs.current.slice(0, prompts.length);
+  }, [prompts]);
 
   /* --------------------------------------------------
    * Global shortcut listener from the backend
@@ -164,41 +174,61 @@ function App() {
   /* --------------------------------------------------
    * Open Edit Window
    * -------------------------------------------------- */
-  const openEditWindow = async (index: number, element: HTMLElement) => {
-    const label = `edit-${index}`;
-    const existing = await WebviewWindow.getByLabel(label);
-    if (existing) {
-      await existing.setFocus();
-      return;
+  const openEditWindow = async (index: number, element?: HTMLElement | null) => {
+    console.log(`openEditWindow called for index ${index}`);
+    try {
+      const label = `edit-${index}`;
+      const existing = await WebviewWindow.getByLabel(label);
+      if (existing) {
+        console.log(`Focusing existing edit window ${label}`);
+        await existing.setFocus();
+        return;
+      }
+
+      const EDIT_WIDTH = 400;
+      const EDIT_HEIGHT = 420;
+
+      let newLeft: number | undefined;
+      let newTop: number | undefined;
+
+      if (element) {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        const scale = await win.scaleFactor();
+        const rect = element.getBoundingClientRect();
+        const physicalLeft = pos.x + Math.round(rect.left * scale);
+        const physicalTop = pos.y + Math.round(rect.top * scale);
+        const physicalWidth = Math.round(rect.width * scale);
+        newLeft = physicalLeft + physicalWidth / 2 - Math.round((EDIT_WIDTH * scale) / 2);
+        newTop = physicalTop - Math.round(EDIT_HEIGHT * scale) - 10;
+        // Clamp to stay on-screen (at least 0,0) in case the calculation
+        // would position the window off the visible area.
+        if (newLeft < 0) newLeft = 0;
+        if (newTop < 0) newTop = 0;
+        console.log(`Calculated window position left=${newLeft}, top=${newTop}`);
+      } else {
+        console.warn(`No element provided for positioning edit window index ${index}`);
+      }
+
+      const newWin = new WebviewWindow(label, {
+        url: `index.html?edit=${index}`,
+        title: `Edit Prompt ${index + 1}`,
+        width: EDIT_WIDTH,
+        height: EDIT_HEIGHT,
+        resizable: true,
+        decorations: true,
+        // Capabilities omitted: inherits default permissions like the settings window
+      });
+
+      if (newLeft !== undefined && newTop !== undefined) {
+        await newWin.once("tauri://created", async () => {
+          await newWin.setPosition(new PhysicalPosition(Math.round(newLeft!), Math.round(newTop!)));
+          console.log(`Edit window positioned.`);
+        });
+      }
+    } catch (err) {
+      console.error(`Error opening edit window for ${index}:`, err);
     }
-
-    const EDIT_WIDTH = 400;
-    const EDIT_HEIGHT = 300;
-
-    const win = getCurrentWindow();
-    const pos = await win.outerPosition();
-    const scale = await win.scaleFactor();
-
-    const rect = element.getBoundingClientRect();
-    const physicalLeft = pos.x + Math.round(rect.left * scale);
-    const physicalTop = pos.y + Math.round(rect.top * scale);
-    const physicalWidth = Math.round(rect.width * scale);
-
-    const newLeft = physicalLeft + (physicalWidth / 2) - Math.round((EDIT_WIDTH * scale) / 2);
-    const newTop = physicalTop - Math.round(EDIT_HEIGHT * scale) - 10;
-
-    const newWin = new WebviewWindow(label, {
-      url: `index.html?edit=${index}`,
-      title: `Edit Prompt ${index + 1}`,
-      width: EDIT_WIDTH,
-      height: EDIT_HEIGHT,
-      resizable: true,
-      decorations: true,
-    });
-
-    await newWin.once("tauri://created", async () => {
-      await newWin.setPosition(new PhysicalPosition(newLeft, newTop));
-    });
   };
 
   /* --------------------------------------------------
@@ -213,22 +243,43 @@ function App() {
           {prompts.slice(0, 9).map((p, i) => (
             <div
               key={p.id}
+              ref={(el) => (pillRefs.current[i] = el)}
               className={`prompt-pill ${injectedId === p.id ? "injected" : ""} ${
                 expandedIndex === i ? "expanded" : ""
               }`}
               onMouseEnter={() => handleMouseEnter(i)}
               onMouseLeave={handleMouseLeave}
               onClick={() => injectTextViaShortcut(p, i + 1)}
-              onContextMenu={(e: React.MouseEvent) => {
-                e.preventDefault();
-                openEditWindow(i, e.currentTarget as HTMLElement);
+              onMouseDown={(e: React.MouseEvent) => {
+                if (e.button === 2) {
+                  console.log(`Right-click (mouse down) detected on prompt ${i + 1}`);
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openEditWindow(i, e.currentTarget as HTMLElement);
+                }
               }}
-              data-tauri-drag-region
+              data-tauri-drag-region="false"
             >
+              {/* Edit pencil always visible */}
+              <button
+                className="edit-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log(`Edit button clicked for prompt ${i + 1}`);
+                  const pill = pillRefs.current[i];
+                  openEditWindow(i, pill);
+                }}
+                data-tauri-drag-region="false"
+              >
+                <Pencil size={14} />
+              </button>
+
               <div className="prompt-number">{i + 1}</div>
 
               {expandedIndex === i ? (
-                <div className="prompt-full">{p.content}</div>
+                <div className="prompt-full-container">
+                  <div className="prompt-full">{p.content}</div>
+                </div>
               ) : (
                 <div className="prompt-info">
                   <div className="prompt-title">{p.title}</div>

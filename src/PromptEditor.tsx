@@ -63,17 +63,20 @@ function PromptEditor() {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const store = await Store.load("prompts.json");
-      const saved = (await store.get<Prompt[]>("prompts")) || DEFAULT_PROMPTS;
+      let saved = (await store.get<Prompt[]>("prompts")) || [];
+      if (saved.length === 0) saved = DEFAULT_PROMPTS;
       if (index >= 0 && index < saved.length) {
         const p = saved[index];
         setPrompt(p);
         setTitle(p.title);
         setContent(p.content);
       }
+      setLoaded(true);
     };
     load();
   }, [index]);
@@ -95,6 +98,10 @@ function PromptEditor() {
     const win = getCurrentWindow();
     await win.close();
   };
+
+  if (!loaded) {
+    return <div className="prompt-editor">Loading...</div>;
+  }
 
   if (prompt === null) {
     return <div className="prompt-editor">Invalid prompt index</div>;
