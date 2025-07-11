@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Prompt Picker",
+  "productName": "Prompt Buddy",
   "version": "0.1.0",
-  "identifier": "com.prompt-picker.app",
+  "identifier": "com.promptbuddy.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Prompt Picker",
+        "title": "Prompt Buddy",
         "width": 800,
         "height": 80,
         "resizable": false,
@@ -28,7 +28,7 @@
         "titleBarStyle": "Transparent",
         "hiddenTitle": true,
         "focus": false,
-        "acceptFirstMouse": false,
+        "acceptFirstMouse": true,
         "visible": false,
         "minimizable": false,
         "maximizable": false,
