@@ -2,7 +2,7 @@ use tauri::{AppHandle, Listener, Manager, Emitter};
 use std::process::Command;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use enigo::{Enigo, Keyboard, Settings};
 use tauri::{WebviewWindowBuilder, WebviewUrl, LogicalPosition};
 
@@ -268,58 +268,61 @@ pub fn run() {
             
             // Register main shortcut with handler in one step
             println!("🎯 Registering main toggle shortcut...");
-            let main_shortcut: Shortcut = "cmd+shift+enter".parse().map_err(|e| format!("Failed to parse main shortcut: {}", e))?;
+            let main_shortcut: Shortcut = "alt+space".parse().map_err(|e| format!("Failed to parse main shortcut: {}", e))?;
             match app.handle().global_shortcut().on_shortcut(main_shortcut, move |_app, _shortcut, _state| {
-                println!("🎯 Global shortcut triggered!");
-                
-                if let Some(window) = _app.get_webview_window("main") {
-                    println!("✅ Found main window");
-                    match window.is_visible() {
-                        Ok(is_visible) => {
-                            println!("👁️  Current window visibility: {}", is_visible);
-                            if is_visible {
-                                println!("🫥 Hiding prompt picker bar");
-                                if let Err(e) = window.hide() {
-                                    println!("❌ Failed to hide window: {}", e);
+                // Only act on key *press* events so the shortcut truly toggles.
+                if _state.state() == ShortcutState::Pressed {
+                    println!("🎯 Global shortcut (Alt+Space) pressed!");
+
+                    if let Some(window) = _app.get_webview_window("main") {
+                        println!("✅ Found main window");
+                        match window.is_visible() {
+                            Ok(is_visible) => {
+                                println!("👁️  Current window visibility: {}", is_visible);
+                                if is_visible {
+                                    println!("🫥 Hiding prompt picker bar");
+                                    if let Err(e) = window.hide() {
+                                        println!("❌ Failed to hide window: {}", e);
+                                    }
+                                } else {
+                                    // Before showing the window we record the app
+                                    // that is currently frontmost so we can switch
+                                    // back to it later when the user selects a prompt.
+                                    remember_current_app();
+
+                                    println!("👁️  Showing prompt picker bar");
+                                    if let Err(e) = window.show() {
+                                        println!("❌ Failed to show window: {}", e);
+                                    } else {
+                                        println!("✅ Window shown successfully");
+                                        let _ = window.set_focus();
+                                    }
                                 }
-                            } else {
-                                // Before showing the window we record the app
-                                // that is currently frontmost so we can switch
-                                // back to it later when the user selects a prompt.
+                            }
+                            Err(e) => {
+                                println!("❌ Failed to get window visibility: {}", e);
+                                // Capture frontmost app before stealing focus
                                 remember_current_app();
 
-                                println!("👁️  Showing prompt picker bar");
+                                println!("🔄 Attempting to show window anyway...");
                                 if let Err(e) = window.show() {
                                     println!("❌ Failed to show window: {}", e);
                                 } else {
-                                    println!("✅ Window shown successfully");
                                     let _ = window.set_focus();
                                 }
                             }
                         }
-                        Err(e) => {
-                            println!("❌ Failed to get window visibility: {}", e);
-                            // Capture frontmost app before stealing focus
-                            remember_current_app();
-
-                            println!("🔄 Attempting to show window anyway...");
-                            if let Err(e) = window.show() {
-                                println!("❌ Failed to show window: {}", e);
-                            } else {
-                                let _ = window.set_focus();
-                            }
-                        }
+                    } else {
+                        println!("❌ Could not find main window");
                     }
-                } else {
-                    println!("❌ Could not find main window");
                 }
             }) {
                 Ok(_) => {
-                    println!("✅ Main shortcut (cmd+shift+enter) registered successfully!");
+                    println!("✅ Main shortcut (Alt+Space) registered successfully!");
                 }
                 Err(e) => {
                     println!("❌ Failed to register main shortcut: {}", e);
-                    println!("⚠️  You can still use the app manually, but cmd+shift+enter won't work");
+                    println!("⚠️  You can still use the app manually, but Alt+Space won't work");
                 }
             }
             
@@ -333,14 +336,15 @@ pub fn run() {
                 match shortcut_str.parse::<Shortcut>() {
                     Ok(shortcut) => {
                         match app.handle().global_shortcut().on_shortcut(shortcut, move |app, _shortcut, _state| {
-                            println!("🚀 Prompt shortcut triggered: Cmd+Alt+{}", i);
-                            
-                            // Emit event to frontend to trigger injection
-                            if let Some(window) = app.get_webview_window("main") {
-                                if let Err(e) = window.emit("inject-prompt", prompt_index) {
-                                    println!("❌ Failed to emit inject-prompt event: {}", e);
-                                } else {
-                                    println!("✅ Emitted inject-prompt event for index: {}", prompt_index);
+                            if _state.state() == ShortcutState::Pressed {
+                                println!("🚀 Prompt shortcut triggered: Cmd+Alt+{}", i);
+                                // Emit event to frontend to trigger injection
+                                if let Some(window) = app.get_webview_window("main") {
+                                    if let Err(e) = window.emit("inject-prompt", prompt_index) {
+                                        println!("❌ Failed to emit inject-prompt event: {}", e);
+                                    } else {
+                                        println!("✅ Emitted inject-prompt event for index: {}", prompt_index);
+                                    }
                                 }
                             }
                         }) {
@@ -367,7 +371,7 @@ pub fn run() {
             }
             
             println!("🎯 Prompt Picker initialized successfully!");
-            println!("📋 Use Cmd+Shift+Enter to show/hide the prompt picker bar");
+            println!("📋 Use Alt+Space to show/hide the prompt picker bar");
             println!("🎯 Use Cmd+Alt+1-9 to inject prompts");
             println!("⚠️  Note: On macOS, you may need to grant accessibility permissions");
             
