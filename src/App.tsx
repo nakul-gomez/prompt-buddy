@@ -260,25 +260,30 @@ function App() {
               }}
               data-tauri-drag-region="false"
             >
-              {/* Edit pencil always visible */}
-              <button
-                className="edit-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log(`Edit button clicked for prompt ${i + 1}`);
-                  const pill = pillRefs.current[i];
-                  openEditWindow(i, pill);
-                }}
-                data-tauri-drag-region="false"
-              >
-                <Pencil size={14} />
-              </button>
-
-              <div className="prompt-number">{i + 1}</div>
+              {/* Number + Edit stacked */}
+              <div className="prompt-badge" data-tauri-drag-region="false">
+                <div className="prompt-number">{i + 1}</div>
+                <button
+                  className="edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log(`Edit button clicked for prompt ${i + 1}`);
+                    const pill = pillRefs.current[i];
+                    openEditWindow(i, pill);
+                  }}
+                  data-tauri-drag-region="false"
+                >
+                  <Pencil size={12} />
+                </button>
+              </div>
 
               {expandedIndex === i ? (
                 <div className="prompt-full-container">
-                  <div className="prompt-full">{p.content}</div>
+                  <div className="prompt-full">
+                    {p.content.length > 1000
+                      ? `${p.content.slice(0, 1000)}…`
+                      : p.content}
+                  </div>
                 </div>
               ) : (
                 <div className="prompt-info">
