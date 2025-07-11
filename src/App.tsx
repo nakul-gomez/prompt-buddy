@@ -114,6 +114,28 @@ function App() {
   }, [loadPrompts]);
 
   /* --------------------------------------------------
+   * Keyboard listener – press 1-9 to inject prompts
+   * -------------------------------------------------- */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only act on plain number keys (no modifiers) while the bar has focus
+      if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
+
+      const key = e.key;
+      if (key >= "1" && key <= "9") {
+        const index = parseInt(key, 10) - 1;
+        if (index < prompts.length) {
+          e.preventDefault();
+          injectTextViaShortcut(prompts[index], index + 1);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [prompts]);
+
+  /* --------------------------------------------------
    * Hover handlers
    * -------------------------------------------------- */
   const handleMouseEnter = useCallback((index: number) => {
@@ -131,9 +153,31 @@ function App() {
     setInjectedId(null);
     setErrorMessage("");
     try {
-      // Capture the app that is currently frontmost *before* we inject.
-      // This ensures the backend re-activates the correct target (e.g. Cursor).
-      await invoke("capture_frontmost_app");
+      // If the prompt bar is hidden (e.g. the user used a global shortcut
+      // without opening the UI), we first capture whichever application is
+      // currently front-most so we can restore focus after injecting. When
+      // the bar is visible we skip this to avoid overwriting the saved app
+      // with the prompt picker itself.
+      try {
+        const win = getCurrentWindow();
+        const isVisible = await win.isVisible();
+        if (!isVisible) {
+          await invoke("capture_frontmost_app");
+        }
+      } catch (err) {
+        console.warn("capture_frontmost_app/isVisible failed", err);
+      }
+
+      // Now bring the previously active application back to the front so the
+      // injected text goes to the correct place.
+      try {
+        await invoke("activate_last_app");
+      } catch (err) {
+        console.warn("activate_last_app failed", err);
+      }
+
+      // Give macOS a moment to actually switch focus.
+      await new Promise((r) => setTimeout(r, 300));
 
       await invoke<string>("inject_text", { text: prompt.content });
       setInjectedId(prompt.id);

@@ -229,6 +229,32 @@ async fn capture_frontmost_app() -> Result<(), String> {
     Ok(())
 }
 
+// Command that re-activates the application we previously captured with
+// `remember_current_app()`.  The frontend can call this right after a pill
+// click so macOS focus is switched back before we start typing.
+#[tauri::command]
+async fn activate_last_app() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(app_name) = LAST_APP_NAME.lock().unwrap().clone() {
+            println!("🔄 Tauri cmd: activating last app = {}", app_name);
+            if activate_app(&app_name) {
+                return Ok(());
+            } else {
+                return Err(format!("Failed to activate {}", app_name));
+            }
+        }
+        println!("ℹ️  No last app recorded - nothing to activate");
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        println!("🔄 activate_last_app called on non-macOS platform – noop");
+        Ok(())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -236,7 +262,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup, capture_frontmost_app])
+        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup, capture_frontmost_app, activate_last_app])
         .setup(|app| {
             println!("🔧 Setting up global shortcuts with handlers...");
             
