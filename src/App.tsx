@@ -131,6 +131,10 @@ function App() {
     setInjectedId(null);
     setErrorMessage("");
     try {
+      // Capture the app that is currently frontmost *before* we inject.
+      // This ensures the backend re-activates the correct target (e.g. Cursor).
+      await invoke("capture_frontmost_app");
+
       await invoke<string>("inject_text", { text: prompt.content });
       setInjectedId(prompt.id);
       setTimeout(() => setInjectedId(null), 2000);

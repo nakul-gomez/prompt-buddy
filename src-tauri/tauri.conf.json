@@ -28,7 +28,7 @@
         "titleBarStyle": "Transparent",
         "hiddenTitle": true,
         "focus": false,
-        "acceptFirstMouse": false,
+        "acceptFirstMouse": true,
         "visible": false,
         "minimizable": false,
         "maximizable": false,

@@ -1,7 +1,48 @@
 use tauri::{AppHandle, Listener, Manager, Emitter};
+use std::process::Command;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use enigo::{Enigo, Keyboard, Settings};
 use tauri::{WebviewWindowBuilder, WebviewUrl, LogicalPosition};
+
+// Store the name of the application that was active **before** the prompt bar
+// was shown. This lets us switch focus back to that application after the user
+// clicks a prompt pill so the text is inserted into the correct window.
+static LAST_APP_NAME: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+
+#[cfg(target_os = "macos")]
+fn get_frontmost_app() -> Option<String> {
+    let output = Command::new("osascript")
+        .arg("-e")
+        .arg("tell application \"System Events\" to get name of application process 1 whose frontmost is true")
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !name.is_empty() {
+            return Some(name);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn activate_app(app_name: &str) -> bool {
+    Command::new("osascript")
+        .arg("-e")
+        .arg(format!("tell application \"{}\" to activate", app_name))
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+// Stub helpers for non-macOS platforms so compilation still succeeds.
+#[cfg(not(target_os = "macos"))]
+fn get_frontmost_app() -> Option<String> { None }
+
+#[cfg(not(target_os = "macos"))]
+fn activate_app(_app_name: &str) -> bool { false }
 
 #[derive(Clone, serde::Serialize)]
 struct PromptPayload {
@@ -80,6 +121,19 @@ async fn inject_text(text: String) -> Result<String, String> {
     println!("🚀 Starting text injection...");
     println!("📝 Text to inject: '{}'", text);
     println!("📏 Text length: {} characters", text.len());
+
+    // Attempt to reactivate the previously focused application (macOS only).
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(app_name) = LAST_APP_NAME.lock().unwrap().clone() {
+            println!("🔄 Reactivating previously active app: {}", app_name);
+            if !activate_app(&app_name) {
+                println!("⚠️  Failed to reactivate {}", app_name);
+            }
+        } else {
+            println!("ℹ️  No previously active app recorded – skipping re-activation");
+        }
+    }
     
     if text.is_empty() {
         let error_msg = "❌ Cannot inject empty text";
@@ -93,9 +147,8 @@ async fn inject_text(text: String) -> Result<String, String> {
         error_msg
     })?;
     
-    println!("⏱️  Waiting 500ms for user to refocus text field...");
-    // Longer delay to give user time to click back to the text field
-    std::thread::sleep(std::time::Duration::from_millis(500));
+    println!("⏱️  Waiting 300ms after activating previous window...");
+    std::thread::sleep(std::time::Duration::from_millis(300));
     
     println!("⌨️  Attempting to type text...");
     
@@ -170,6 +223,12 @@ async fn hide_popup(app: AppHandle) {
     }
 }
 
+#[tauri::command]
+async fn capture_frontmost_app() -> Result<(), String> {
+    remember_current_app();
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -177,7 +236,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup])
+        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup, capture_frontmost_app])
         .setup(|app| {
             println!("🔧 Setting up global shortcuts with handlers...");
             
@@ -198,6 +257,11 @@ pub fn run() {
                                     println!("❌ Failed to hide window: {}", e);
                                 }
                             } else {
+                                // Before showing the window we record the app
+                                // that is currently frontmost so we can switch
+                                // back to it later when the user selects a prompt.
+                                remember_current_app();
+
                                 println!("👁️  Showing prompt picker bar");
                                 if let Err(e) = window.show() {
                                     println!("❌ Failed to show window: {}", e);
@@ -209,7 +273,9 @@ pub fn run() {
                         }
                         Err(e) => {
                             println!("❌ Failed to get window visibility: {}", e);
-                            // If we can't get visibility, just try to show it
+                            // Capture frontmost app before stealing focus
+                            remember_current_app();
+
                             println!("🔄 Attempting to show window anyway...");
                             if let Err(e) = window.show() {
                                 println!("❌ Failed to show window: {}", e);
@@ -281,6 +347,11 @@ pub fn run() {
             
             // Show window on first launch for better user experience
             if let Some(window) = app.get_webview_window("main") {
+                // Record the currently frontmost application BEFORE we bring
+                // the prompt bar to the foreground. This way we can return
+                // focus to it when the user clicks a prompt.
+                remember_current_app();
+
                 println!("👁️  Showing bar on first launch");
                 let _ = window.show();
             }
@@ -289,4 +360,16 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// Helper that records the currently frontmost application so we can restore
+// focus later. Only meaningful on macOS.
+fn remember_current_app() {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(name) = get_frontmost_app() {
+            println!("💾 Remembering current frontmost app: {}", name);
+            *LAST_APP_NAME.lock().unwrap() = Some(name);
+        }
+    }
 }
