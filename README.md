@@ -1,4 +1,5 @@
-# Prompt Buddy
+# Prompt Picker
+**Languages | 语言**: [English](README.md) | [简体中文](README.zh-CN.md)
 
 A lightweight, always-on-top desktop app for quickly accessing and managing your most-used prompts for **Cursor**. Built with [Tauri v2](https://v2.tauri.app/), React and TypeScript for a fast, truly native feel and near-zero resource overhead.
 
