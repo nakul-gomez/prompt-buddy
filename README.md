@@ -21,6 +21,28 @@ A lightweight, always-on-top desktop app for quickly accessing and managing your
 
 ## 📦 Installation (macOS)
 
+> **Important for Downloaded Builds ⚠️**
+> 
+> If you downloaded a pre-built app and see "Prompt Buddy is damaged and can't be opened", this is a macOS security feature. The app isn't actually damaged - it just needs to be allowed to run:
+> 
+> **Option 1: Right-click method**
+> 1. Right-click the app and select "Open" 
+> 2. Click "Open" in the dialog that appears
+> 
+> **Option 2: System Settings**
+> 1. Go to **System Settings** → **Privacy & Security**
+> 2. Look for a message about "Prompt Buddy" and click **"Open Anyway"**
+> 
+> **Option 3: Terminal method**
+> ```bash
+> # Replace with your actual app location, typically one of:
+> # /Applications/Prompt Buddy.app
+> # ~/Downloads/Prompt Buddy.app  
+> # ~/Desktop/Prompt Buddy.app
+> 
+> xattr -cr "/Applications/Prompt Buddy.app"
+> ```
+
 ### 1 · Prerequisites
 
 - **Node ≥ 18**
@@ -80,6 +102,36 @@ Prompt Picker is built with:
 - [Tauri v2](https://v2.tauri.app/) – cross-platform desktop framework
 - [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - [Lucide React](https://lucide.dev/) – pixel-perfect icons
+
+### Code Signing (macOS Distribution)
+
+To distribute the app without the "damaged" error, you need to code sign and notarize:
+
+1. **Get a Developer ID Certificate**
+   - Join the [Apple Developer Program](https://developer.apple.com/programs/) ($99/year)
+   - Create a "Developer ID Application" certificate in Xcode or Developer Portal
+
+2. **Set Environment Variables**
+   Copy `env.example` to `.env` and fill in your actual values:
+   ```bash
+   cp env.example .env
+   # Then edit .env with your certificate details
+   ```
+   
+   Or export them in your shell:
+   ```bash
+   export APPLE_CERTIFICATE_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
+   export APPLE_ID="your-apple-id@example.com"
+   export APPLE_PASSWORD="app-specific-password"
+   export APPLE_TEAM_ID="YOUR_TEAM_ID"
+   ```
+
+4. **Build with Code Signing**
+   ```bash
+   npm run tauri build
+   ```
+
+The resulting app will be properly signed and notarized, eliminating the security warning.
 
 ---
 

@@ -51,6 +51,16 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signing": {
+        "identity": "$APPLE_CERTIFICATE_IDENTITY"
+      },
+      "notarization": {
+        "appleId": "$APPLE_ID",
+        "password": "$APPLE_PASSWORD",
+        "teamId": "$APPLE_TEAM_ID"
+      }
+    }
   }
 }

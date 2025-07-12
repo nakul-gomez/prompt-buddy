@@ -2,6 +2,28 @@
 
 一个轻量级、始终置顶的桌面应用，可让你快速访问和管理在 Cursor 中常用的提示词（Prompt）。采用 Tauri v2 构建，拥有原生性能表现与优雅的亚克力玻璃 UI 效果。
 
+> **下载版本重要提示 ⚠️**
+> 
+> 如果您下载了预构建版本，在 macOS 上看到"Prompt Buddy 已损坏，无法打开"的提示，这并非应用真的损坏，而是 macOS 的安全机制。您可以通过以下方式允许运行：
+> 
+> **方法一：右键打开**
+> 1. 右键点击应用，选择"打开"
+> 2. 在弹出的对话框中点击"打开"
+> 
+> **方法二：系统设置**
+> 1. 前往 **系统设置** → **隐私与安全性**
+> 2. 找到关于"Prompt Buddy"的消息，点击 **"仍要打开"**
+> 
+> **方法三：终端命令**
+> ```bash
+> # 将路径替换为实际的应用位置，通常在以下位置之一：
+> # /Applications/Prompt Buddy.app
+> # ~/Downloads/Prompt Buddy.app
+> # ~/Desktop/Prompt Buddy.app
+> 
+> xattr -cr "/Applications/Prompt Buddy.app"
+> ```
+
 ## 功能特性
 
 - 🎨 **优雅的亚克力玻璃 UI** - 现代化玻璃拟物设计，与 macOS 和 Windows 的美学深度契合
@@ -85,6 +107,36 @@ npm run tauri build
 - [Tauri v2](https://v2.tauri.app/) - 原生应用框架
 - React + TypeScript - 前端 UI
 - Lucide React - 图标库
+
+### 代码签名（macOS 分发）
+
+要分发不出现"损坏"错误的应用，您需要进行代码签名和公证：
+
+1. **获取开发者 ID 证书**
+   - 加入 [Apple 开发者计划](https://developer.apple.com/programs/)（$99/年）
+   - 在 Xcode 或开发者门户中创建"Developer ID Application"证书
+
+2. **设置环境变量**
+   复制 `env.example` 到 `.env` 并填入您的实际值：
+   ```bash
+   cp env.example .env
+   # 然后编辑 .env 文件，填入您的证书详细信息
+   ```
+   
+   或在终端中导出：
+   ```bash
+   export APPLE_CERTIFICATE_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
+   export APPLE_ID="your-apple-id@example.com"
+   export APPLE_PASSWORD="app-specific-password"
+   export APPLE_TEAM_ID="YOUR_TEAM_ID"
+   ```
+
+3. **构建并签名**
+   ```bash
+   npm run tauri build
+   ```
+
+生成的应用将被正确签名和公证，消除安全警告。
 
 ## 许可证
 
