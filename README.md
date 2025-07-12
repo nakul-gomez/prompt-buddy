@@ -1,4 +1,4 @@
-# Prompt Picker
+# Prompt Buddy
 
 A lightweight, always-on-top desktop app for quickly accessing and managing your most-used prompts for **Cursor**. Built with [Tauri v2](https://v2.tauri.app/), React and TypeScript for a fast, truly native feel and near-zero resource overhead.
 
@@ -67,8 +67,8 @@ The signed DMG can be found under `src-tauri/target/release/bundle/dmg`.
 ## 🖥️ Platform Support
 
 - ✅ macOS 13 +
+- 🚫 Windows (coming soon)
 - 🚧 Linux (coming soon)
-- 🚫 Windows (not supported yet)
 
 ---
 
