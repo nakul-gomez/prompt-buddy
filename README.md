@@ -68,7 +68,7 @@ The signed DMG can be found under `src-tauri/target/release/bundle/dmg`.
 ## 🖥️ Platform Support
 
 - ✅ macOS 13 +
-- 🚫 Windows (coming soon)
+- 🟡 Windows (coming soon)
 - 🚧 Linux (coming soon)
 
 ---
