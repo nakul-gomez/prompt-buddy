@@ -2,7 +2,7 @@
 html {
   border-radius: 16px !important;
   overflow: hidden !important;
-  background: transparent !important;
+  background: #f5f5f5 !important;
   -webkit-border-radius: 16px !important;
   -moz-border-radius: 16px !important;
 }
@@ -10,7 +10,7 @@ html {
 body {
   border-radius: 16px !important;
   overflow: hidden !important;
-  background: transparent !important;
+  background: #f5f5f5 !important;
   -webkit-border-radius: 16px !important;
   -moz-border-radius: 16px !important;
   margin: 0 !important;
@@ -25,11 +25,26 @@ body {
 #root {
   border-radius: 16px !important;
   overflow: hidden !important;
-  background: transparent !important;
+  background: #f5f5f5 !important;
   -webkit-border-radius: 16px !important;
   -moz-border-radius: 16px !important;
   height: 100vh !important;
   width: 100vw !important;
+}
+
+/* Dark mode background */
+@media (prefers-color-scheme: dark) {
+  html {
+    background: #2a2a2a !important;
+  }
+  
+  body {
+    background: #2a2a2a !important;
+  }
+  
+  #root {
+    background: #2a2a2a !important;
+  }
 }
 
 * {
@@ -43,10 +58,12 @@ body {
   height: 100vh;
   width: 100vw;
   display: flex;
-  align-items: center;
+  align-items: stretch; /* Allow items to stretch to container height */
   position: relative;
-  padding: 12px;
+  padding: clamp(16px, 3vw, 24px) clamp(8px, 2vw, 16px) clamp(8px, 2vw, 16px) clamp(8px, 2vw, 16px); /* Extra top padding for expanded pills */
   overflow: hidden;
+  min-height: 68px; /* Increased to accommodate extra padding */
+  max-height: 136px; /* Increased to accommodate extra padding */
 }
 
 .bar-background {
@@ -55,76 +72,44 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.bar-background::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, 
-    rgba(255, 255, 255, 0.15) 0%, 
-    rgba(255, 255, 255, 0.05) 25%,
-    rgba(255, 255, 255, 0.02) 50%,
-    rgba(255, 255, 255, 0.08) 75%,
-    rgba(255, 255, 255, 0.12) 100%);
-  pointer-events: none;
-  border-radius: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   .bar-background {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 
-      inset 0 1px 0 rgba(255, 255, 255, 0.15),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-      0 8px 32px rgba(0, 0, 0, 0.3),
-      0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-  
-  .bar-background::before {
-    background: linear-gradient(90deg, 
-      rgba(255, 255, 255, 0.08) 0%, 
-      rgba(255, 255, 255, 0.02) 25%,
-      rgba(255, 255, 255, 0.01) 50%,
-      rgba(255, 255, 255, 0.04) 75%,
-      rgba(255, 255, 255, 0.06) 100%);
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.15);
   }
 }
 
 .bar-content {
   display: flex;
-  align-items: center;
+  align-items: stretch; /* Allow items to stretch to container height */
   width: 100%;
   height: 100%;
   position: relative;
   z-index: 2;
-  gap: 12px;
+  gap: clamp(8px, 1.5vw, 16px);
 }
 
 /* Prompts container */
 .prompts-container {
   display: flex;
-  gap: 8px;
+  gap: clamp(4px, 1vw, 8px);
   flex: 1;
   overflow-x: auto;
-  padding: 0 4px;
+  overflow-y: visible; /* Allow vertical overflow for expanded pills */
+  padding: 0 clamp(2px, 0.5vw, 4px);
   scrollbar-width: none;
   -ms-overflow-style: none;
-  align-items: center; /* keep pills vertically centered while allowing row height growth */
+  align-items: stretch; /* Allow pills to stretch vertically */
+  flex-wrap: nowrap; /* Keep items in a single row */
+  min-width: 0; /* Allow shrinking */
 }
 
 .prompts-container::-webkit-scrollbar {
@@ -134,28 +119,32 @@ body {
 /* Individual prompt pills */
 .prompt-pill {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  min-width: 100px;
-  max-width: 160px;
+  align-items: flex-start; /* Align to top for better text flow */
+  gap: clamp(4px, 1vw, 8px);
+  padding: clamp(4px, 1vh, 8px) clamp(6px, 1.5vw, 12px);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: clamp(8px, 1.5vw, 12px);
+  min-width: clamp(80px, 12vw, 100px);
+  max-width: clamp(120px, 20vw, 180px);
+  min-height: clamp(32px, 5vh, 40px); /* Set minimum height */
+  height: auto; /* Allow dynamic height */
   position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  overflow: visible; /* Allow content to expand */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0; /* Prevent pills from shrinking too much */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .prompt-pill:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(139, 92, 246, 0.4);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .prompt-pill.injected {
@@ -166,41 +155,58 @@ body {
 
 @media (prefers-color-scheme: dark) {
   .prompt-pill {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .prompt-pill:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(139, 92, 246, 0.3);
   }
 }
 
-/* Expanded pill grows to fit its content horizontally */
+/* Expanded pill grows to fit its content both horizontally and vertically */
 .prompt-pill.expanded {
   flex: 0 0 auto;
   width: auto;
+  height: auto; /* Allow vertical expansion */
+  min-height: auto; /* Remove minimum height constraint */
+  max-height: clamp(200px, 60vh, 300px); /* Better height constraint */
+  overflow-y: auto; /* Handle content overflow */
   /* Constrain width so the full prompt text wraps instead of stretching horizontally */
-  max-width: 420px;
-  /* Add a bit more padding so the pill gets slightly taller on hover */
-  padding: 12px 16px;
+  max-width: clamp(250px, 40vw, 400px);
+  /* Add more padding for expanded state */
+  padding: clamp(12px, 2vh, 16px) clamp(16px, 2.5vw, 20px);
+  /* Allow content to overflow the container bounds when needed */
+  position: relative;
+  transform: translateY(-4px); /* Smaller offset since we have more top padding */
+  z-index: 5; /* Reduced z-index to prevent border covering */
+  /* Add shadow to make it appear floating */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(139, 92, 246, 0.2); /* Add border for better definition */
 }
 
 /* Full prompt text shown on hover */
 .prompt-full {
-  /* keep text on a single line and hide overflow for type-out effect */
-  white-space: normal;
+  white-space: normal; /* Allow text wrapping */
   overflow: visible;
   word-break: break-word;
-  font-size: 12px;
+  word-wrap: break-word; /* Ensure word wrapping */
+  hyphens: auto; /* Support automatic hyphenation */
+  font-size: clamp(11px, 1.6vw, 13px);
   font-weight: 500;
   color: #333;
   flex: 1;
+  line-height: 1.5; /* Better line spacing for readability */
+  display: block; /* Ensure proper text flow */
+  width: 100%;
 }
 
 /* Animate text reveal + horizontal growth when the pill is expanded */
 .prompt-pill.expanded .prompt-full {
   animation: none; /* disable type-out animation for multi-line display */
+  max-height: none; /* Remove height constraints */
+  overflow: visible;
 }
 
 @keyframes revealText {
@@ -225,12 +231,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: clamp(16px, 2.5vw, 20px);
+  height: clamp(16px, 2.5vw, 20px);
   background: rgba(139, 92, 246, 0.2);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 6px;
-  font-size: 11px;
+  border-radius: clamp(4px, 0.8vw, 6px);
+  font-size: clamp(9px, 1.4vw, 11px);
   font-weight: 600;
   color: #8b5cf6;
   flex-shrink: 0;
@@ -243,13 +249,14 @@ body {
   gap: 2px;
   flex: 1;
   min-width: 0;
+  height: auto; /* Allow content to determine height */
 }
 
 .prompt-title {
-  font-size: 11px;
+  font-size: clamp(9px, 1.4vw, 11px);
   font-weight: 600;
   color: #333;
-  /* Show up to 2 lines, then truncate */
+  /* Show up to 2 lines in normal state, unlimited in expanded */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -257,8 +264,15 @@ body {
   word-break: break-word;
 }
 
+/* Allow unlimited lines in expanded state */
+.prompt-pill.expanded .prompt-title {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  max-height: none;
+}
+
 .prompt-shortcut {
-  font-size: 10px;
+  font-size: clamp(8px, 1.2vw, 10px);
   font-weight: 500;
   color: #666;
   opacity: 0.8;
@@ -289,7 +303,7 @@ body {
 /* Bar controls */
 .bar-controls {
   display: flex;
-  gap: 6px;
+  gap: clamp(4px, 0.8vw, 6px);
   align-items: center;
   flex-shrink: 0;
 }
@@ -298,35 +312,39 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  width: clamp(28px, 4vw, 32px);
+  height: clamp(28px, 4vw, 32px);
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: clamp(6px, 1vw, 8px);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: #666;
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .control-btn:hover {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.4);
   color: #8b5cf6;
   transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
 }
 
 .control-btn.close-btn:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
   color: #ef4444;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
 }
 
 @media (prefers-color-scheme: dark) {
   .control-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: #aaa;
   }
   
@@ -374,15 +392,16 @@ body {
   top: -80px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   padding: 16px;
   animation: slideDown 0.3s ease-out;
   z-index: 1000;
   min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 @keyframes slideDown {
@@ -429,8 +448,8 @@ body {
 
 @media (prefers-color-scheme: dark) {
   .settings-overlay {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .settings-hint {
@@ -574,9 +593,8 @@ button {
 
 .prompt-full-container {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .edit-btn {
@@ -588,8 +606,8 @@ button {
   opacity: 0.7;
   pointer-events: auto;
   z-index: 1;
-  width: 14px;
-  height: 14px;
+  width: clamp(12px, 1.8vw, 14px);
+  height: clamp(12px, 1.8vw, 14px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -602,12 +620,45 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: clamp(1px, 0.3vw, 2px);
   flex-shrink: 0;
 }
 
 .prompt-badge .edit-btn {
   margin: 0;
+}
+
+/* Responsive adjustments for very small windows */
+@media (max-width: 500px) {
+  .prompt-pill {
+    min-width: 70px;
+    max-width: 100px;
+  }
+  
+  .prompt-pill.expanded {
+    max-width: 200px;
+  }
+  
+  .prompt-title {
+    font-size: 9px;
+    -webkit-line-clamp: 1; /* Show only 1 line on very small screens */
+  }
+  
+  .prompt-shortcut {
+    font-size: 8px;
+  }
+}
+
+/* Hide some elements on extremely small windows */
+@media (max-width: 400px) {
+  .prompt-shortcut {
+    display: none; /* Hide shortcuts on very small screens */
+  }
+  
+  .edit-btn {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 
