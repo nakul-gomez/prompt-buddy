@@ -13,13 +13,13 @@
     "windows": [
       {
         "title": "Prompt Buddy",
-        "width": 800,
-        "height": 80,
+        
+        
         "resizable": true,
         "minWidth": 400,
         "minHeight": 60,
         "maxWidth": 1400,
-        "maxHeight": 120,
+        "maxHeight": 150,
         "alwaysOnTop": true,
         "decorations": false,
         "transparent": true,

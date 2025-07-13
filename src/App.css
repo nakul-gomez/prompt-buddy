@@ -63,7 +63,12 @@ body {
   padding: clamp(16px, 3vw, 24px) clamp(8px, 2vw, 16px) clamp(8px, 2vw, 16px) clamp(8px, 2vw, 16px); /* Extra top padding for expanded pills */
   overflow: hidden;
   min-height: 68px; /* Increased to accommodate extra padding */
-  max-height: 136px; /* Increased to accommodate extra padding */
+  max-height: 150px; /* Increased to accommodate extra padding */
+  
+  /* 最外层边框：轻盈的边界识别 */
+  border-radius: 18px; /* 比背景大一点，创建外边框效果 */
+  border: 0.5px solid rgba(120, 120, 120, 0.2);
+  background: transparent;
 }
 
 .bar-background {
@@ -72,18 +77,38 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* 更高透明度的毛玻璃效果，模拟 macOS Big Sur+ 的视觉风格 */
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
   border-radius: 16px;
-  border: 2px solid rgba(0, 0, 0, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  /* 轻盈边框：精细的边界线条 */
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 0.25px rgba(255, 255, 255, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
+  .prompt-bar {
+    /* 深色模式轻盈外边框 */
+    border: 0.5px solid rgba(200, 200, 200, 0.25);
+  }
+  
   .bar-background {
-    background: rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.15);
+    /* 深色模式下的优雅毛玻璃效果 */
+    background: rgba(22, 22, 23, 0.5);
+    backdrop-filter: blur(30px) saturate(1.8);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    /* 深色模式轻盈边框 */
+    border: 0.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 0 0 0.25px rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -102,7 +127,7 @@ body {
   display: flex;
   gap: clamp(4px, 1vw, 8px);
   flex: 1;
-  overflow-x: auto;
+  overflow: visible; /* Allow content to overflow horizontally and vertically */
   overflow-y: visible; /* Allow vertical overflow for expanded pills */
   padding: 0 clamp(2px, 0.5vw, 4px);
   scrollbar-width: none;
@@ -118,12 +143,16 @@ body {
 
 /* Individual prompt pills */
 .prompt-pill {
+  position: relative; /* Allow z-index to work */
   display: flex;
   align-items: flex-start; /* Align to top for better text flow */
   gap: clamp(4px, 1vw, 8px);
   padding: clamp(4px, 1vh, 8px) clamp(6px, 1.5vw, 12px);
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  /* 更精致的毛玻璃效果，类似 iOS/macOS 控制中心 */
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: clamp(8px, 1.5vw, 12px);
   min-width: clamp(80px, 12vw, 100px);
   max-width: clamp(120px, 20vw, 180px);
@@ -131,42 +160,96 @@ body {
   height: auto; /* Allow dynamic height */
   position: relative;
   overflow: visible; /* Allow content to expand */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   user-select: none;
   flex-shrink: 0; /* Prevent pills from shrinking too much */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .prompt-pill:hover {
-  background: rgba(255, 255, 255, 0.8);
-  border: 2px solid rgba(139, 92, 246, 0.4);
+  z-index: 10; /* Bring to front on hover */
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(25px) saturate(1.4);
+  -webkit-backdrop-filter: blur(25px) saturate(1.4);
+  border: 1px solid rgba(139, 92, 246, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 
+    0 8px 20px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(139, 92, 246, 0.1);
 }
 
 .prompt-pill.injected {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(34, 197, 94, 0.4);
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.25);
+  backdrop-filter: blur(25px) saturate(1.6);
+  -webkit-backdrop-filter: blur(25px) saturate(1.6);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  box-shadow: 
+    0 4px 16px rgba(34, 197, 94, 0.3),
+    0 2px 8px rgba(34, 197, 94, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 0 1px rgba(34, 197, 94, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   .prompt-pill {
-    background: rgba(0, 0, 0, 0.7);
+    /* 深色模式下的精致毛玻璃效果 */
+    background: rgba(40, 40, 42, 0.4);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
   
   .prompt-pill:hover {
-    background: rgba(0, 0, 0, 0.8);
-    border-color: rgba(139, 92, 246, 0.3);
+    background: rgba(60, 60, 65, 0.5);
+    backdrop-filter: blur(25px) saturate(1.8);
+    -webkit-backdrop-filter: blur(25px) saturate(1.8);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    box-shadow: 
+      0 8px 20px rgba(0, 0, 0, 0.3),
+      0 4px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      0 0 0 1px rgba(139, 92, 246, 0.2);
+  }
+  
+  .prompt-pill.expanded {
+    /* 深色模式下展开状态的毛玻璃效果 */
+    background: rgba(60, 60, 65, 0.6);
+    backdrop-filter: blur(30px) saturate(2.0);
+    -webkit-backdrop-filter: blur(30px) saturate(2.0);
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      0 4px 16px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 0 1px rgba(139, 92, 246, 0.3);
+  }
+  
+  .prompt-pill.injected {
+    background: rgba(34, 197, 94, 0.3);
+    backdrop-filter: blur(25px) saturate(1.8);
+    -webkit-backdrop-filter: blur(25px) saturate(1.8);
+    border: 1px solid rgba(34, 197, 94, 0.6);
+    box-shadow: 
+      0 4px 16px rgba(34, 197, 94, 0.4),
+      0 2px 8px rgba(34, 197, 94, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 0 1px rgba(34, 197, 94, 0.2);
   }
 }
 
 /* Expanded pill grows to fit its content both horizontally and vertically */
 .prompt-pill.expanded {
+  scrollbar-width: none; /* Firefox */
   flex: 0 0 auto;
   width: auto;
   height: auto; /* Allow vertical expansion */
@@ -181,9 +264,22 @@ body {
   position: relative;
   transform: translateY(-4px); /* Smaller offset since we have more top padding */
   z-index: 5; /* Reduced z-index to prevent border covering */
-  /* Add shadow to make it appear floating */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: 2px solid rgba(139, 92, 246, 0.2); /* Add border for better definition */
+  
+  /* 展开状态的增强毛玻璃效果 */
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(30px) saturate(1.6);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 0 1px rgba(139, 92, 246, 0.15);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.prompt-pill.expanded::-webkit-scrollbar {
+  display: none;
 }
 
 /* Full prompt text shown on hover */
@@ -253,7 +349,7 @@ body {
 }
 
 .prompt-title {
-  font-size: clamp(9px, 1.4vw, 11px);
+  font-size: clamp(10px, 1.5vw, 12px);
   font-weight: 600;
   color: #333;
   /* Show up to 2 lines in normal state, unlimited in expanded */
@@ -314,46 +410,81 @@ body {
   justify-content: center;
   width: clamp(28px, 4vw, 32px);
   height: clamp(28px, 4vw, 32px);
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* 精致的毛玻璃控制按钮效果 */
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(15px) saturate(1.2);
+  -webkit-backdrop-filter: blur(15px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: clamp(6px, 1vw, 8px);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: #666;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   flex-shrink: 0; /* Prevent buttons from shrinking */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .control-btn:hover {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.25);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(139, 92, 246, 0.4);
   color: #8b5cf6;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+  box-shadow: 
+    0 4px 16px rgba(139, 92, 246, 0.2),
+    0 2px 8px rgba(139, 92, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .control-btn.close-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.25);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(239, 68, 68, 0.4);
   color: #ef4444;
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+  box-shadow: 
+    0 4px 16px rgba(239, 68, 68, 0.2),
+    0 2px 8px rgba(239, 68, 68, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
   .control-btn {
-    background: rgba(0, 0, 0, 0.5);
+    /* 深色模式下的精致毛玻璃控制按钮 */
+    background: rgba(40, 40, 42, 0.4);
+    backdrop-filter: blur(15px) saturate(1.5);
+    -webkit-backdrop-filter: blur(15px) saturate(1.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #aaa;
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
   
   .control-btn:hover {
+    background: rgba(139, 92, 246, 0.3);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid rgba(139, 92, 246, 0.5);
     color: #8b5cf6;
+    box-shadow: 
+      0 4px 16px rgba(139, 92, 246, 0.3),
+      0 2px 8px rgba(139, 92, 246, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
   
   .control-btn.close-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid rgba(239, 68, 68, 0.5);
     color: #f87171;
+    box-shadow: 
+      0 4px 16px rgba(239, 68, 68, 0.3),
+      0 2px 8px rgba(239, 68, 68, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 }
 
@@ -389,7 +520,7 @@ body {
 /* Settings overlay */
 .settings-overlay {
   position: absolute;
-  top: -80px;
+  top: 20px; /* 修正：之前是-80px，导致内容显示在窗口外 */
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.5);
@@ -420,6 +551,7 @@ body {
   flex-direction: column;
   gap: 8px;
   align-items: center;
+  padding-bottom: 20px; /* 为按钮增加底部空间 */
 }
 
 .settings-hint {
@@ -428,6 +560,8 @@ body {
   margin: 0;
   text-align: center;
 }
+
+
 
 .settings-close {
   background: rgba(139, 92, 246, 0.2);
@@ -446,6 +580,83 @@ body {
   transform: translateY(-1px);
 }
 
+/* 新的设置界面样式 */
+.settings-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.settings-section {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+}
+
+.settings-select {
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  color: #333;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.settings-hint-small {
+  font-size: 10px;
+  color: #666;
+  margin: 4px 0 0 0;
+  line-height: 1.3;
+}
+
+.settings-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.settings-save {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #22c55e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-save:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+  transform: translateY(-1px);
+}
+
+.settings-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (prefers-color-scheme: dark) {
   .settings-overlay {
     background: rgba(0, 0, 0, 0.5);
@@ -454,6 +665,28 @@ body {
   
   .settings-hint {
     color: #fff;
+  }
+  
+  .settings-title {
+    color: #fff;
+  }
+  
+  .settings-label {
+    color: #fff;
+  }
+  
+  .settings-select {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+  
+  .settings-select:focus {
+    border-color: rgba(139, 92, 246, 0.5);
+  }
+  
+  .settings-hint-small {
+    color: #aaa;
   }
 }
 

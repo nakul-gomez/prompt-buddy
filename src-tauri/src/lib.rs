@@ -5,11 +5,15 @@ use once_cell::sync::Lazy;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use enigo::{Enigo, Keyboard, Settings};
 use tauri::{WebviewWindowBuilder, WebviewUrl, LogicalPosition};
+use tauri_plugin_store::StoreExt;
 
 // Store the name of the application that was active **before** the prompt bar
 // was shown. This lets us switch focus back to that application after the user
 // clicks a prompt pill so the text is inserted into the correct window.
 static LAST_APP_NAME: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+
+// Store the current toggle shortcut for dynamic updates
+static CURRENT_TOGGLE_SHORTCUT: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
 
 #[cfg(target_os = "macos")]
 fn get_frontmost_app() -> Option<String> {
@@ -43,6 +47,8 @@ fn get_frontmost_app() -> Option<String> { None }
 
 #[cfg(not(target_os = "macos"))]
 fn activate_app(_app_name: &str) -> bool { false }
+
+
 
 #[derive(Clone, serde::Serialize)]
 struct PromptPayload {
@@ -255,6 +261,124 @@ async fn activate_last_app() -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+async fn update_toggle_shortcut(app: AppHandle, new_shortcut: String) -> Result<String, String> {
+    println!("🔧 Updating toggle shortcut to: {}", new_shortcut);
+    
+    // First, unregister the current toggle shortcut if one exists
+    if let Some(current_shortcut) = CURRENT_TOGGLE_SHORTCUT.lock().unwrap().clone() {
+        println!("🗑️  Unregistering previous shortcut: {}", current_shortcut);
+        if let Ok(shortcut) = current_shortcut.parse::<Shortcut>() {
+            if let Err(e) = app.global_shortcut().unregister(shortcut) {
+                println!("⚠️  Failed to unregister previous shortcut: {}", e);
+            }
+        }
+    }
+    
+    // Parse and register the new shortcut
+    match new_shortcut.parse::<Shortcut>() {
+        Ok(shortcut) => {
+            // Clone for use in closure
+            let shortcut_for_log = new_shortcut.clone();
+            
+            // Register the new toggle shortcut
+            match app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _state| {
+                if _state.state() == ShortcutState::Pressed {
+                    println!("🎯 Custom toggle shortcut pressed: {}", shortcut_for_log);
+                    toggle_window_visibility_internal(_app);
+                }
+            }) {
+                Ok(_) => {
+                    // Update the stored current shortcut
+                    *CURRENT_TOGGLE_SHORTCUT.lock().unwrap() = Some(new_shortcut.clone());
+                    println!("✅ Successfully registered new toggle shortcut: {}", new_shortcut);
+                    Ok(format!("Toggle shortcut updated to: {}", new_shortcut))
+                }
+                Err(e) => {
+                    let error_msg = format!("Failed to register new shortcut '{}': {}", new_shortcut, e);
+                    println!("❌ {}", error_msg);
+                    Err(error_msg)
+                }
+            }
+        }
+        Err(e) => {
+            let error_msg = format!("Invalid shortcut format '{}': {}", new_shortcut, e);
+            println!("❌ {}", error_msg);
+            Err(error_msg)
+        }
+    }
+}
+
+// 从设置中读取快捷键配置
+async fn load_toggle_shortcut_from_settings(app: &AppHandle) -> String {
+    match app.store("settings.json") {
+        Ok(store) => {
+            match store.get("toggleShortcut") {
+                Some(value) => {
+                    if let Some(shortcut) = value.as_str() {
+                        println!("📋 Loaded toggle shortcut from settings: {}", shortcut);
+                        return shortcut.to_string();
+                    }
+                }
+                None => {
+                    println!("ℹ️  No toggle shortcut found in settings, using default");
+                }
+            }
+        }
+        Err(e) => {
+            println!("⚠️  Failed to load settings: {}", e);
+        }
+    }
+    
+    // 默认快捷键
+    "ctrl+space".to_string()
+}
+
+// 提取窗口切换逻辑为独立函数，便于复用
+fn toggle_window_visibility_internal(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        println!("✅ Found main window");
+        match window.is_visible() {
+            Ok(is_visible) => {
+                println!("👁️  Current window visibility: {}", is_visible);
+                if is_visible {
+                    println!("🫥 Hiding prompt picker bar");
+                    if let Err(e) = window.hide() {
+                        println!("❌ Failed to hide window: {}", e);
+                    }
+                } else {
+                    // Before showing the window we record the app
+                    // that is currently frontmost so we can switch
+                    // back to it later when the user selects a prompt.
+                    remember_current_app();
+
+                    println!("👁️  Showing prompt picker bar");
+                    if let Err(e) = window.show() {
+                        println!("❌ Failed to show window: {}", e);
+                    } else {
+                        println!("✅ Window shown successfully");
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to get window visibility: {}", e);
+                // Capture frontmost app before stealing focus
+                remember_current_app();
+
+                println!("🔄 Attempting to show window anyway...");
+                if let Err(e) = window.show() {
+                    println!("❌ Failed to show window: {}", e);
+                } else {
+                    let _ = window.set_focus();
+                }
+            }
+        }
+    } else {
+        println!("❌ Could not find main window");
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -262,69 +386,43 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup, capture_frontmost_app, activate_last_app])
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+                        .invoke_handler(tauri::generate_handler![greet, inject_text, check_accessibility_permissions, toggle_window_visibility, show_popup, hide_popup, capture_frontmost_app, activate_last_app, update_toggle_shortcut])
         .setup(|app| {
             println!("🔧 Setting up global shortcuts with handlers...");
             
-            // Register main shortcut with handler in one step
-            println!("🎯 Registering main toggle shortcut...");
-            let main_shortcut: Shortcut = "alt+space".parse().map_err(|e| format!("Failed to parse main shortcut: {}", e))?;
-            match app.handle().global_shortcut().on_shortcut(main_shortcut, move |_app, _shortcut, _state| {
-                // Only act on key *press* events so the shortcut truly toggles.
-                if _state.state() == ShortcutState::Pressed {
-                    println!("🎯 Global shortcut (Alt+Space) pressed!");
-
-                    if let Some(window) = _app.get_webview_window("main") {
-                        println!("✅ Found main window");
-                        match window.is_visible() {
-                            Ok(is_visible) => {
-                                println!("👁️  Current window visibility: {}", is_visible);
-                                if is_visible {
-                                    println!("🫥 Hiding prompt picker bar");
-                                    if let Err(e) = window.hide() {
-                                        println!("❌ Failed to hide window: {}", e);
-                                    }
-                                } else {
-                                    // Before showing the window we record the app
-                                    // that is currently frontmost so we can switch
-                                    // back to it later when the user selects a prompt.
-                                    remember_current_app();
-
-                                    println!("👁️  Showing prompt picker bar");
-                                    if let Err(e) = window.show() {
-                                        println!("❌ Failed to show window: {}", e);
-                                    } else {
-                                        println!("✅ Window shown successfully");
-                                        let _ = window.set_focus();
-                                    }
-                                }
+            // Load toggle shortcut from settings
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let toggle_shortcut = load_toggle_shortcut_from_settings(&app_handle).await;
+                println!("🎯 Registering main toggle shortcut: {}", toggle_shortcut);
+                
+                match toggle_shortcut.parse::<Shortcut>() {
+                    Ok(main_shortcut) => {
+                        let shortcut_str = toggle_shortcut.clone();
+                        match app_handle.global_shortcut().on_shortcut(main_shortcut, move |_app, _shortcut, _state| {
+                            // Only act on key *press* events so the shortcut truly toggles.
+                            if _state.state() == ShortcutState::Pressed {
+                                println!("🎯 Global shortcut ({}) pressed!", shortcut_str);
+                                toggle_window_visibility_internal(_app);
+                            }
+                        }) {
+                            Ok(_) => {
+                                // Store the current shortcut for future updates
+                                *CURRENT_TOGGLE_SHORTCUT.lock().unwrap() = Some(toggle_shortcut.clone());
+                                println!("✅ Main shortcut ({}) registered successfully!", toggle_shortcut);
                             }
                             Err(e) => {
-                                println!("❌ Failed to get window visibility: {}", e);
-                                // Capture frontmost app before stealing focus
-                                remember_current_app();
-
-                                println!("🔄 Attempting to show window anyway...");
-                                if let Err(e) = window.show() {
-                                    println!("❌ Failed to show window: {}", e);
-                                } else {
-                                    let _ = window.set_focus();
-                                }
+                                println!("❌ Failed to register main shortcut {}: {}", toggle_shortcut, e);
+                                println!("⚠️  You can still use the app manually, but the toggle shortcut won't work");
                             }
                         }
-                    } else {
-                        println!("❌ Could not find main window");
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to parse main shortcut {}: {}", toggle_shortcut, e);
                     }
                 }
-            }) {
-                Ok(_) => {
-                    println!("✅ Main shortcut (Alt+Space) registered successfully!");
-                }
-                Err(e) => {
-                    println!("❌ Failed to register main shortcut: {}", e);
-                    println!("⚠️  You can still use the app manually, but Alt+Space won't work");
-                }
-            }
+            });
             
             // Register prompt injection shortcuts with handlers
             println!("🎯 Registering prompt injection shortcuts...");
@@ -371,7 +469,7 @@ pub fn run() {
             }
             
             println!("🎯 Prompt Picker initialized successfully!");
-            println!("📋 Use Alt+Space to show/hide the prompt picker bar");
+            println!("📋 Use Ctrl+Space to show/hide the prompt picker bar");
             println!("🎯 Use Cmd+Alt+1-9 to inject prompts");
             println!("⚠️  Note: On macOS, you may need to grant accessibility permissions");
             
